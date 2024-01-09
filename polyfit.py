@@ -24,25 +24,36 @@ class spline:
             self.bounds[i] = [self.x[lower_bound], self.x[upper_bound]]
 
     def value(self, x, der=0, tanh=True):
+        if x <= self.x[0]:
+            return np.polyval(self.coeffs[0], x)
+        elif x >= self.x[-1]:
+            return np.polyval(self.coeffs[-1], x)
+        
         y = None
-        for i in range(self.segments):
-            if x >= self.bounds[i][0] and x <= self.bounds[i][1]:
-                if y == None:
-                    if der == 0:
-                        y = np.polyval(self.coeffs[i], x)
-                    else:
-                        y = np.polyval(np.polyder(self.coeffs[i], der), x)
+        searching_window = max(10, int(self.segments / 33)) # searching on 3% of the segments
+        first = max(0, int((x - self.x[0])/ (self.x[-1] - self.x[0]) * self.segments) - int(searching_window/2))
+        for i in range(first, first + searching_window):
+            if x < self.bounds[i][1]:
+                if der == 0:
+                    y = np.polyval(self.coeffs[i], x)
                 else:
+                    y = np.polyval(np.polyder(self.coeffs[i], der), x)
+                
+                if x > self.bounds[i+1][0]:
                     if tanh:
-                        ratio = (np.tanh(2*np.pi*((x-self.bounds[i][0])/(self.bounds[i-1][1]-self.bounds[i][0])-0.5))+1)/2
+                        ratio = (np.tanh(2*np.pi*((x-self.bounds[i+1][0])/(self.bounds[i][1]-self.bounds[i+1][0])-0.5))+1)/2
                     else:
-                        ratio = (x-self.bounds[i][0])/(self.bounds[i-1][1]-self.bounds[i][0])
+                        ratio = (x-self.bounds[i+1][0])/(self.bounds[i][1]-self.bounds[i+1][0])
+
                     if der == 0:
-                        y = y*(1-ratio) + np.polyval(self.coeffs[i], x)*ratio
+                        y = y*(1-ratio) + np.polyval(self.coeffs[i+1], x)*ratio
                     else:
-                        y = y*(1-ratio) + np.polyval(np.polyder(self.coeffs[i], der), x)*ratio
-        if y == None:
-            raise ValueError(f"x={x} outside of bounds")
+                        y = y*(1-ratio) + np.polyval(np.polyder(self.coeffs[i+1], der), x)*ratio
+                break
+            
+        if y is None:
+            raise ValueError("Searching window too small -> framerate not constant enough")
+
         return y
 
 if __name__ == "__main__":
