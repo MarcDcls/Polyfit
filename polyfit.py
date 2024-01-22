@@ -24,22 +24,23 @@ class spline:
             self.bounds[i] = [self.x[lower_bound], self.x[upper_bound]]
 
     def value(self, x, der=0, tanh=True):
-        if x <= self.x[0]:
+        if x <= self.bounds[0][0]:
             return np.polyval(self.coeffs[0], x)
-        elif x >= self.x[-1]:
+        elif x >= self.bounds[-1][1]:
             return np.polyval(self.coeffs[-1], x)
         
         y = None
         searching_window = max(10, int(self.segments / 33)) # searching on 3% of the segments
         first = max(0, int((x - self.x[0])/ (self.x[-1] - self.x[0]) * self.segments) - int(searching_window/2))
+
         for i in range(first, first + searching_window):
-            if x < self.bounds[i][1]:
+            if x <= self.bounds[i][1]:
                 if der == 0:
                     y = np.polyval(self.coeffs[i], x)
                 else:
                     y = np.polyval(np.polyder(self.coeffs[i], der), x)
                 
-                if x > self.bounds[i+1][0]:
+                if i != self.segments - 1 and x > self.bounds[i+1][0]:
                     if tanh:
                         ratio = (np.tanh(2*np.pi*((x-self.bounds[i+1][0])/(self.bounds[i][1]-self.bounds[i+1][0])-0.5))+1)/2
                     else:
